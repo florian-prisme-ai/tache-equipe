@@ -1,0 +1,260 @@
+Resources:
+  Conditionnaly display button:
+    objectId: re18tw2zz8
+    type: function
+  Liste des tâches:
+    objectId: KsFM5QZlli
+    type: dataflow
+  Notification:
+    objectId: o2OVz89kJg
+    type: webhook
+Settings:
+  name: Tâches d'équipe
+  category: 0
+  bio:
+    fr: Gérez les tâches de votre équipe
+  plateform: ggwg.ai
+  photo: >-
+    https://ggwg-core-storage.oss.eu-west-0.prod-cloud-ocb.orange-business.com/picfc4f2c7071dc49f7fcf59bd86c03321f_undefined.png
+  format: png
+  nlu:
+    fr: snips
+  languages:
+    - fr
+  probability:
+    fr: 0.3
+  objectId: DlRFgf17Z1
+  restrictedAccess:
+    authentication:
+      active: true
+      providers:
+        - Prisme
+      allowedList: false
+  channels:
+    prismeaiMessenger:
+      enabled: true
+    mobileApp:
+      home: []
+      about: []
+      config:
+        primaryColor: '#FFFFFF'
+      fr: {}
+      enabled: true
+    web:
+      fr: {}
+      enabled: true
+      customStyles: |-
+        .pr-chat-container::before {
+          height: 100px;
+          background-size: cover;
+          background-image: url(https://www.puydufou.com/france/themes/custom/pdf/img/2021/HP-spectacles-voir-2021.jpg);
+          content: " ";
+        }
+
+        .pr-chat-container::after {
+          position: absolute;
+          top: 25px;
+          left: 0;
+          right: 0;
+          height: 50px;
+          /*! width: 75%; */
+          background-size: contain;
+          background-repeat: no-repeat;
+          background-image: url(https://www.puydufou.com/images/logo_puydufou.svg);
+          content: " ";
+          background-position: center;
+        }
+
+        .pr-chat-container {
+          background-color: rgb(237, 236, 234);;
+        }
+
+        .pr-message-item-text__content {
+          background-color: #F1F2F7;
+        }
+
+        .pr-input,
+        .pr-chat,
+        .pr-conversation,
+        .pr-conversation__footer {
+          background-color: unset;
+        }
+
+        .pr-icon--chat * {
+          stroke: #ff4533 !important;
+        }
+
+        .pr-icon--chat .cls-2 {
+          fill: #ff4533 !important;
+        }
+
+        .pr-expand-button {
+            background-color: white;
+        }
+      secondaryColor: '#ffffff'
+      primaryColor: '#d4c970'
+  release: 18
+Intents:
+  Fallback Intent:
+    when: {}
+    do:
+      fr:
+        - say text: >-
+            Je ne sais que saluer pour le moment. Merci de m'enrichir en créant
+            des intentions. Profitez-en pour personnaliser cette réponse dans
+            Fallback Intent
+    parameters: []
+    isFallback: true
+    published: true
+    objectId: PCLd7j7G2U
+    metadata:
+      position:
+        - 50030
+        - 50000
+      highlighted: false
+  Welcome Intent:
+    when:
+      match phrases:
+        fr:
+          - Salut
+          - Hello
+          - Bonjour
+          - hey
+          - coucou
+          - bonsoir
+          - bsr
+          - bjr
+          - slt
+      match events: []
+    do:
+      fr:
+        - say text: Bienvenue $user.firstName, comment puis-je vous aider ?
+        - call read dataflow:
+            resource: Liste des tâches
+            query: {}
+            output: taches
+        - repeat:
+            then:
+              - say card:
+                  buttons: []
+                  title: $nom
+                  text: $description
+                  image: >-
+                    https://images.pexels.com/photos/131979/pexels-photo-131979.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940
+                  metadata:
+                    position:
+                      - 50030
+                      - 50738
+            'on': taches
+            metadata:
+              position:
+                - 50030
+                - 50492
+        - call function:
+            resource: Conditionnaly display button
+            parameters:
+              buttonValue: ajouter_tache
+              buttonType: event
+              buttonText: Ajouter une tâche
+              value1: $user.email
+              value2: florian.peyron@gogowego.com
+    parameters:
+      - value: '#session.user'
+        disableInput: false
+        name: user
+        entity: ggwg/any
+    inputContexts:
+      - session
+    outputContexts: {}
+    settings: {}
+    isWelcome: true
+    published: true
+    objectId: gM4Lp0dgWA
+    metadata:
+      position:
+        - 50030
+        - 50246
+      highlighted: false
+  Ajouter une tache:
+    when:
+      match phrases:
+        fr: []
+      match events:
+        - ajouter_tache
+    do:
+      - call write dataflow: Liste des tâches
+      - say event:
+          text: Prévenir par notification
+          value: envoi_notification
+      - say event:
+          text: Nouvelle Tâche
+          value: ajouter_tache
+      - say event:
+          text: Retour à l'accueil
+          value: WELCOME
+    parameters:
+      - required: true
+        questions:
+          - Quel est le nom de la tâche ?
+        value: $nom
+        disableInput: false
+        name: nom
+        entity: ggwg/any
+      - required: true
+        questions:
+          - Quelle est la description de la tâche ?
+        value: $description
+        disableInput: false
+        entity: ggwg/any
+        name: description
+    inputContexts: []
+    outputContexts:
+      tache: 1
+    settings: {}
+    published: true
+    metadata:
+      highlighted: false
+      position:
+        - 50030
+        - 50984
+    objectId: quuexCNeyC
+  Envoi de notification:
+    when:
+      match phrases:
+        fr: []
+      match events:
+        - envoi_notification
+    do:
+      - call webhook:
+          resource: Notification
+          parameters:
+            message: '$nom : $description'
+            priority: 'true'
+            duration: '1'
+            actionValue: WELCOME
+            actionType: event
+      - say random text:
+          - Les membres de l'équipe ont été prévenus !
+      - say event:
+          text: Nouvelle Tâche
+          value: ajouter_tache
+      - say event:
+          text: Retour à l'accueil
+          value: WELCOME
+    parameters: []
+    inputContexts: []
+    outputContexts: {}
+    settings: {}
+    published: true
+    metadata:
+      highlighted: false
+      position:
+        - 50031
+        - 51248
+    objectId: 395H4iCTDE
+Entities: {}
+metadata:
+  position:
+    - 134
+    - -414
+  zoom: 10
